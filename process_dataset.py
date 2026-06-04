@@ -8,6 +8,10 @@ import argparse
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn import model_selection
 
+# Add the parent directory to sys.path so we can import handler.py
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from handler import UnifiedDataLoader 
+
 TYPE_TRANSFORM ={
     'float', np.float32,
     'str', str,
@@ -21,6 +25,10 @@ parser = argparse.ArgumentParser(description='process dataset')
 # General configs
 parser.add_argument('--dataname', type=str, default=None, help='Name of dataset.')
 args = parser.parse_args()
+
+loader = UnifiedDataLoader(dataset_name=args.dataname, target_model_type="tabdiff")
+meta = loader.get_metadata()
+loader.get_train_data() 
 
 def preprocess_beijing():
     with open(f'{INFO_PATH}/beijing.json', 'r') as f:
