@@ -29,6 +29,8 @@ args = parser.parse_args()
 loader = UnifiedDataLoader(dataset_name=args.dataname, target_model_type="tabdiff")
 meta = loader.get_metadata()
 loader.get_train_data() 
+loader.get_val_data() 
+loader.get_test_data() 
 
 def preprocess_beijing():
     with open(f'{INFO_PATH}/beijing.json', 'r') as f:
@@ -323,35 +325,20 @@ def get_column_name_mapping(data_df, num_col_idx, cat_col_idx, target_col_idx, c
 def train_val_test_split(data_df, cat_columns, num_train = 0, num_test = 0):
     total_num = data_df.shape[0]
     idx = np.arange(total_num)
-
-
     seed = 1234
 
-    while True:
-        np.random.seed(seed)
-        np.random.shuffle(idx)
+    # remove the while True loop 
+    np.random.seed(seed)
+    np.random.shuffle(idx)
 
-        train_idx = idx[:num_train]
-        test_idx = idx[-num_test:]
+    train_idx = idx[:num_train]
+    test_idx = idx[-num_test:]
 
+    train_df = data_df.loc[train_idx]
+    test_df = data_df.loc[test_idx]
 
-        train_df = data_df.loc[train_idx]
-        test_df = data_df.loc[test_idx]
-
-
-
-        flag = 0
-        for i in cat_columns:
-            if len(set(train_df[i])) != len(set(data_df[i])):
-                flag = 1
-                break
-
-        if flag == 0:
-            break
-        else:
-            seed += 1
-        
-    return train_df, test_df, seed    
+    # Return the split immediately without checking for categorical perfection
+    return train_df, test_df, seed
 
 
 def process_data(name):
@@ -432,16 +419,12 @@ def process_data(name):
             train_df, test_df, seed = train_val_test_split(complete_df, cat_columns, num_train, num_test)
 
     else:  
-        # Train/ Test Split, 90% Training (50% for dcr eval exclusively), 10% Testing (Validation set will be selected from Training set)
-        if "dcr" in name:
-            num_train = int(num_data*0.5)
-        else:
-            num_train = int(num_data*0.9)
-        num_test = num_data - num_train
+        num_train = int(num_data)
+        num_test = 0
 
         train_df, test_df, seed = train_val_test_split(data_df, cat_columns, num_train, num_test)
     
-    complete_df = pd.concat([train_df, test_df, val_df], axis = 0)
+    complete_df = train_df # pd.concat([train_df, test_df, val_df], axis = 0)
     name_idx_mapping = {val: key for key, val in idx_name_mapping.items()}
     int_columns = []
     int_col_idx = []
@@ -459,10 +442,10 @@ def process_data(name):
     info['int_col_idx_wrt_num'] = int_col_idx_wrt_num
 
     train_df.columns = range(len(train_df.columns))
-    test_df.columns = range(len(test_df.columns))
-    val_df.columns = range(len(val_df.columns))
+    # test_df.columns = range(len(test_df.columns))
+    # val_df.columns = range(len(val_df.columns))
 
-    print(name, train_df.shape, val_df.shape, test_df.shape, data_df.shape)
+    print(name, train_df.shape)#, val_df.shape, test_df.shape, data_df.shape)
 
     col_info = {}
     
@@ -491,8 +474,8 @@ def process_data(name):
     info['column_info'] = col_info
 
     train_df.rename(columns = idx_name_mapping, inplace=True)
-    test_df.rename(columns = idx_name_mapping, inplace=True)
-    val_df.rename(columns = idx_name_mapping, inplace=True)
+    # test_df.rename(columns = idx_name_mapping, inplace=True)
+    # val_df.rename(columns = idx_name_mapping, inplace=True)
 
     for col in num_columns:
         if (train_df[col] == ' ?').sum() > 0:
@@ -504,20 +487,20 @@ def process_data(name):
         train_df.loc[train_df[col] == '?', col] = np.nan
     for col in cat_columns:
         train_df.loc[train_df[col] == '?', col] = 'nan'
-    for col in num_columns:
-        if (test_df[col] == ' ?').sum() > 0:
-            print(col)
-            import pdb; pdb.set_trace()
-        if (test_df[col] == '?').sum() > 0:
-            print(col)
-            import pdb; pdb.set_trace()
-        test_df.loc[test_df[col] == '?', col] = np.nan
-    for col in cat_columns:
-        test_df.loc[test_df[col] == '?', col] = 'nan'
-    for col in num_columns:
-        val_df.loc[val_df[col] == '?', col] = np.nan
-    for col in cat_columns:
-        val_df.loc[val_df[col] == '?', col] = 'nan'
+    # for col in num_columns:
+    #     if (test_df[col] == ' ?').sum() > 0:
+    #         print(col)
+    #         import pdb; pdb.set_trace()
+    #     if (test_df[col] == '?').sum() > 0:
+    #         print(col)
+    #         import pdb; pdb.set_trace()
+    #     test_df.loc[test_df[col] == '?', col] = np.nan
+    # for col in cat_columns:
+    #     test_df.loc[test_df[col] == '?', col] = 'nan'
+    # for col in num_columns:
+    #     val_df.loc[val_df[col] == '?', col] = np.nan
+    # for col in cat_columns:
+    #     val_df.loc[val_df[col] == '?', col] = 'nan'
     
     if train_df.isna().any().any():
         print("Training data contains nan in the numerical cols")
@@ -530,46 +513,46 @@ def process_data(name):
     y_train = train_df[target_columns].to_numpy()
 
 
-    X_num_test = test_df[num_columns].to_numpy().astype(np.float32)
-    X_cat_test = test_df[cat_columns].to_numpy()
-    y_test = test_df[target_columns].to_numpy()
+    # X_num_test = test_df[num_columns].to_numpy().astype(np.float32)
+    # X_cat_test = test_df[cat_columns].to_numpy()
+    # y_test = test_df[target_columns].to_numpy()
 
-    X_num_val = val_df[num_columns].to_numpy().astype(np.float32)
-    X_cat_val = val_df[cat_columns].to_numpy()
-    y_val = val_df[target_columns].to_numpy()
+    # X_num_val = val_df[num_columns].to_numpy().astype(np.float32)
+    # X_cat_val = val_df[cat_columns].to_numpy()
+    # y_val = val_df[target_columns].to_numpy()
  
     save_dir = f'data/{name}'
     np.save(f'{save_dir}/X_num_train.npy', X_num_train)
     np.save(f'{save_dir}/X_cat_train.npy', X_cat_train)
     np.save(f'{save_dir}/y_train.npy', y_train)
 
-    np.save(f'{save_dir}/X_num_test.npy', X_num_test)
-    np.save(f'{save_dir}/X_cat_test.npy', X_cat_test)
-    np.save(f'{save_dir}/y_test.npy', y_test)
+    # np.save(f'{save_dir}/X_num_test.npy', X_num_test)
+    # np.save(f'{save_dir}/X_cat_test.npy', X_cat_test)
+    # np.save(f'{save_dir}/y_test.npy', y_test)
     
-    if has_val:
-        np.save(f'{save_dir}/X_num_val.npy', X_num_val)
-        np.save(f'{save_dir}/X_cat_val.npy', X_cat_val)
-        np.save(f'{save_dir}/y_val.npy', y_val)
+    # if has_val:
+    #     np.save(f'{save_dir}/X_num_val.npy', X_num_val)
+    #     np.save(f'{save_dir}/X_cat_val.npy', X_cat_val)
+    #     np.save(f'{save_dir}/y_val.npy', y_val)
 
     train_df[num_columns] = train_df[num_columns].astype(np.float32)
-    test_df[num_columns] = test_df[num_columns].astype(np.float32)
-    val_df[num_columns] = val_df[num_columns].astype(np.float32)
+    # test_df[num_columns] = test_df[num_columns].astype(np.float32)
+    # val_df[num_columns] = val_df[num_columns].astype(np.float32)
 
 
     train_df.to_csv(f'{save_dir}/train.csv', index = False)
-    test_df.to_csv(f'{save_dir}/test.csv', index = False)
-    if has_val:
-        val_df.to_csv(f'{save_dir}/val.csv', index = False)
+    # test_df.to_csv(f'{save_dir}/test.csv', index = False)
+    # if has_val:
+    #     val_df.to_csv(f'{save_dir}/val.csv', index = False)
 
     if not os.path.exists(f'synthetic/{name}'):
         os.makedirs(f'synthetic/{name}')
     
     train_df.to_csv(f'synthetic/{name}/real.csv', index = False)
-    test_df.to_csv(f'synthetic/{name}/test.csv', index = False)
+    # test_df.to_csv(f'synthetic/{name}/test.csv', index = False)
     
-    if has_val:
-        val_df.to_csv(f'synthetic/{name}/val.csv', index = False)
+    # if has_val:
+    #     val_df.to_csv(f'synthetic/{name}/val.csv', index = False)
 
     print('Numerical', X_num_train.shape)
     print('Categorical', X_cat_train.shape)
