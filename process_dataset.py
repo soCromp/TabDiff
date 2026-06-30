@@ -284,7 +284,6 @@ def preprocess_diabetes_dcr():
         json.dump(info, file, indent=4)
     
 
-
 def get_column_name_mapping(data_df, num_col_idx, cat_col_idx, target_col_idx, column_names = None):
     
     if not column_names:
@@ -402,6 +401,7 @@ def process_data(name):
 
             test_df = pd.read_csv(test_save_path, header = None)
         else:
+            print('loading test')
             test_df = pd.read_csv(test_path, header = info['header'])
             
         if has_val:     # currently you cannot have a val path without a test path
@@ -513,27 +513,27 @@ def process_data(name):
     y_train = train_df[target_columns].to_numpy()
 
 
-    # X_num_test = test_df[num_columns].to_numpy().astype(np.float32)
-    # X_cat_test = test_df[cat_columns].to_numpy()
-    # y_test = test_df[target_columns].to_numpy()
+    X_num_test = test_df[num_columns].to_numpy().astype(np.float32)
+    X_cat_test = test_df[cat_columns].to_numpy()
+    y_test = test_df[target_columns].to_numpy()
 
-    # X_num_val = val_df[num_columns].to_numpy().astype(np.float32)
-    # X_cat_val = val_df[cat_columns].to_numpy()
-    # y_val = val_df[target_columns].to_numpy()
+    X_num_val = val_df[num_columns].to_numpy().astype(np.float32)
+    X_cat_val = val_df[cat_columns].to_numpy()
+    y_val = val_df[target_columns].to_numpy()
  
     save_dir = f'data/{name}'
     np.save(f'{save_dir}/X_num_train.npy', X_num_train)
     np.save(f'{save_dir}/X_cat_train.npy', X_cat_train)
     np.save(f'{save_dir}/y_train.npy', y_train)
 
-    # np.save(f'{save_dir}/X_num_test.npy', X_num_test)
-    # np.save(f'{save_dir}/X_cat_test.npy', X_cat_test)
-    # np.save(f'{save_dir}/y_test.npy', y_test)
+    np.save(f'{save_dir}/X_num_test.npy', X_num_test)
+    np.save(f'{save_dir}/X_cat_test.npy', X_cat_test)
+    np.save(f'{save_dir}/y_test.npy', y_test)
     
-    # if has_val:
-    #     np.save(f'{save_dir}/X_num_val.npy', X_num_val)
-    #     np.save(f'{save_dir}/X_cat_val.npy', X_cat_val)
-    #     np.save(f'{save_dir}/y_val.npy', y_val)
+    if has_val:
+        np.save(f'{save_dir}/X_num_val.npy', X_num_val)
+        np.save(f'{save_dir}/X_cat_val.npy', X_cat_val)
+        np.save(f'{save_dir}/y_val.npy', y_val)
 
     train_df[num_columns] = train_df[num_columns].astype(np.float32)
     # test_df[num_columns] = test_df[num_columns].astype(np.float32)
